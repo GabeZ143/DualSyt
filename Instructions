@@ -1,3 +1,15 @@
+DualSyt — Dual Streams + ONVIF PTZ (go2rtc + FastAPI)
+
+A minimal, cross-platform viewer that shows two RTSP streams (PTZ + fixed) using go2rtc and exposes basic ONVIF PTZ controls via a tiny FastAPI service.
+
+Two simultaneous camera views via go2rtc (/stream.html?src=ptz and /stream.html?src=fixed)
+
+ONVIF PTZ: up/down/left/right/zoom+/zoom−/stop
+
+Simple responsive UI (ui.html)
+
+Works fully offline on your LAN
+
 Environment (.env) Setup
 
 Create a .env at the repo root so both go2rtc and ptz-api pick it up:
@@ -42,11 +54,11 @@ cat > .env <<'EOF'
 EOF
 
 
-Remember to replace USER:PASS with your actual camera credentials.
+Replace USER:PASS with your actual camera credentials.
 
 Python Requirements
 
-ptz-api/requirements.txt (already in repo, ensure it looks like this):
+ptz-api/requirements.txt:
 
 fastapi>=0.115
 uvicorn[standard]>=0.30
@@ -55,26 +67,26 @@ python-dotenv>=1.0
 requests>=2.32
 
 
-Install (if running the API natively):
+Install (only if running the API natively, not in Docker):
 
 pip install -r ptz-api/requirements.txt
 
 
-Docker users don’t need to run pip locally—the ptz-api container installs these when it builds.
+Docker users don’t need to run pip locally — the ptz-api container installs these on build.
 
 Make It “Always Run”
-Option A — Docker (auto-start at boot)
+  Docker (auto-start at boot)
 
-Your docker-compose.yml already uses restart: unless-stopped on all services. Ensure Docker itself is enabled at boot:
+This repo’s docker-compose.yml uses restart: unless-stopped on all services. Ensure Docker itself is enabled at boot:
 
 sudo systemctl enable docker
 
 
-That’s it: after any reboot, Docker starts, and Compose-managed services come up automatically.
+After any reboot, Docker starts and Compose-managed services come up automatically.
 
 (Optional) Auto-update containers (watchtower):
+Add this top-level service in docker-compose.yml:
 
-# add to docker-compose.yml (top-level alongside other services)
 watchtower:
   image: containrrr/watchtower
   restart: unless-stopped
@@ -86,3 +98,75 @@ watchtower:
 Bring it up:
 
 docker compose up -d
+
+One-Command Bootstrap (Linux/Pi)
+
+This helper script installs Docker, clones the repo, writes a starter .env, and brings everything up:
+
+cat > bootstrap.sh <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+# 1) Docker + Compose
+if ! command -v docker >/dev/null 2>&1; then
+  sudo apt update
+  curl -fsSL https://get.docker.com | sh
+  sudo usermod -aG docker "$USER" || true
+  sudo apt -y install docker-compose-plugin
+  sudo systemctl enable docker
+fi
+
+# 2) Clone if needed
+REPO_DIR="${HOME}/DualSyt"
+git clone https://github.com/bamgitbam/DualSyt.git "$REPO_DIR" 2>/dev/null || true
+cd "$REPO_DIR"
+
+# 3) go2rtc config
+[ -f go2rtc.yaml ] || cp go2rtc.yaml.example go2rtc.yaml
+
+# 4) .env (skip if exists)
+if [ ! -f .env ]; then
+cat > .env <<'EONV'
+PTZ_RTSP=rtsp://USER:PASS@10.20.2.122:554/iis/live/1/2#rtsp_transport=tcp
+FIXED_RTSP=rtsp://USER:PASS@10.20.2.121:554/iis/live/1/2#rtsp_transport=tcp
+CAM1_HOST=10.20.2.122
+CAM1_PORT=80
+CAM1_USER=USER
+CAM1_PASS=PASS
+CAM1_PROFILE_TOKEN=
+CAM2_HOST=10.20.2.121
+CAM2_PORT=80
+CAM2_USER=USER
+CAM2_PASS=PASS
+CAM2_PROFILE_TOKEN=
+API_HOST=0.0.0.0
+API_PORT=8088
+CORS_ORIGINS=http://localhost:1985,http://127.0.0.1:1985,http://localhost:8090,http://127.0.0.1:8090
+GO2RTC_HTTP_PORT=1984
+GO2RTC_ENABLE_HLS=true
+GO2RTC_STUN=stun.l.google.com:19302
+TZ=America/Los_Angeles
+EONV
+fi
+
+# 5) Up
+docker compose up -d
+echo ">>> DualSyt is starting. Streams at http://localhost:1985/stream.html?src=ptz"
+echo ">>> UI: serve ui.html (e.g., python3 -m http.server 8090) and open http://localhost:8090/ui.html"
+EOF
+chmod +x bootstrap.sh
+./bootstrap.sh
+
+Sanity Checks
+# Containers healthy?
+docker compose ps
+
+# go2rtc UI/API reachable?
+curl http://localhost:1985/api/streams
+
+# PTZ API health
+curl http://localhost:8089/health
+
+# Move test (0.5s then auto-stop)
+curl "http://localhost:8089/ptz/ptz/move?dir=right&speed=0.3&duration=500"
+curl "http://localhost:8089/ptz/ptz/stop"
