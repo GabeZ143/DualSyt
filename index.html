@@ -73,7 +73,7 @@
   <div class="grid">
     <div>
       <!-- PTZ camera -->
-      <iframe src="http://localhost:1985/stream.html?src=ptz" allow="autoplay"></iframe>
+      <iframe id="ptzStream" allow="autoplay"></iframe>
       <div class="panel">
         <strong>PTZ:</strong>
         <button data-dir="up">Up</button>
@@ -88,13 +88,13 @@
 
     <div>
       <!-- Fixed camera -->
-      <iframe src="http://localhost:1985/stream.html?src=fixed" allow="autoplay"></iframe>
+      <iframe id="fixedStream" allow="autoplay"></iframe>
     </div>
   </div>
 </div>
 
 <script>
-  const API = "http://localhost:8089";
+  const API = `http://${window.location.hostname}:8089`;
   const CAM = "ptz"; // PTZ API alias
 
   function send(dir, isStop = false) {
@@ -125,6 +125,22 @@
 
   document.querySelectorAll("button").forEach(bind);
 </script>
+
+<script>
+  // Find the host (works for localhost or LAN IP)
+  const host = window.location.hostname;
+
+  // Build stream URLs dynamically
+  const ptzURL   = `http://${host}:1985/stream.html?src=ptz`;
+  const fixedURL = `http://${host}:1985/stream.html?src=fixed`;
+
+  // Set the iframe sources when the page loads
+  window.addEventListener("DOMContentLoaded", () => {
+    document.getElementById("ptzStream").src = ptzURL;
+    document.getElementById("fixedStream").src = fixedURL;
+  });
+</script>
+
 
 </body>
 </html>

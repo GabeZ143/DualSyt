@@ -2,3 +2,4 @@ go2rtc.yaml
 docker-compose.yml
 go2rtc.yaml
 docker-compose.yml
+.env

@@ -15,7 +15,10 @@ services:
       - TZ=${TZ}
 
   ptz-api:
-    build: ./ptz-api
+    build:
+      context: ./ptz-api
+      dockerfile: Dockerfile
+
     restart: unless-stopped
     ports:
       - "8089:8088"             # host:container
@@ -41,7 +44,7 @@ services:
     image: nginx:alpine
     restart: unless-stopped
     ports:
-      - "8090:80"
+      - "80:80"
     volumes:
-      - ./site:/usr/share/nginx/html:ro
+      - ./:/usr/share/nginx/html:ro
 

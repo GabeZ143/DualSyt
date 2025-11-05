@@ -1,29 +1,13 @@
 streams:
-  ptz:   "rtsp://USER:PASS@10.20.2.122:554/iis/live/1/2#rtsp_transport=tcp"
-  fixed: "rtsp://USER:PASS@10.20.2.121:554/iis/live/1/2#rtsp_transport=tcp"
+  ptz:   "${PTZ_RTSP}"
+  fixed: "${FIXED_RTSP}"
 
 api:
-  listen: ":1984"
+  listen: ":${GO2RTC_HTTP_PORT}"
 
 hls:
-  enabled: true
+  enabled: ${GO2RTC_ENABLE_HLS}
 
 webrtc:
   candidates:
-   - stun:stun.l.google.com:19302
-    
-# Keep Secrets in .env
-
-#streams:
-  #ptz:   "${PTZ_RTSP}"
-  #fixed: "${FIXED_RTSP}"
-
-#api:
-  #listen: ":${GO2RTC_HTTP_PORT}"
-
-#hls:
-  #enabled: ${GO2RTC_ENABLE_HLS}
-
-#webrtc:
-  #candidates:
-    #- stun:${GO2RTC_STUN}
+    - stun:${GO2RTC_STUN}
